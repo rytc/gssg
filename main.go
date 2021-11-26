@@ -11,6 +11,13 @@ import (
 	"strings"
 )
 
+type PageData struct {
+	SiteName    string
+	PageTitle   string
+	SiteContent map[string]interface{}
+	Content     template.HTML
+}
+
 type Project struct {
 	Title       string
 	Subtitle    string
@@ -125,6 +132,10 @@ func ReadProjects() []Project {
 	return featuredProj
 }
 
+func Unescape(s string) template.HTML {
+	return template.HTML(s)
+}
+
 func BuildSite() {
 	err := CopyDir("static", "public")
 	if err != nil {
@@ -132,24 +143,36 @@ func BuildSite() {
 		log.Fatal(err.Error())
 	}
 
-	//templates := ReadTemplates()
+	templates := ReadTemplates()
 	projects := ReadProjects()
 
 	for _, proj := range projects {
 		fmt.Println("Reading project " + proj.Title)
 	}
 
-	/*
-		data := struct {
-			PageTitle string
-			Content   string
-		}{
-			PageTitle: "Test Page",
-			Content:   "This is the content!",
-		}*/
+	data := PageData{
+		SiteName:    "rytc.io",
+		PageTitle:   "test page title",
+		SiteContent: make(map[string]interface{}),
+	}
 
-	//mainTpl.Execute(os.Stdout, data)
+	data.SiteContent["projects"] = projects
 
+	tplFile, err := ioutil.ReadFile("pages/index.html")
+	if err != nil {
+		log.Fatal("Failed to load page index.html: " + err.Error())
+	}
+	tpl, err := template.New("index.html").Funcs(template.FuncMap{"noescape": Unescape}).Parse(string(tplFile))
+	if err != nil {
+		log.Println("Error parsing template")
+		log.Fatal(err.Error())
+	}
+
+	sw := new(strings.Builder)
+	tpl.Execute(sw, data)
+
+	data.Content = template.HTML(sw.String())
+	templates["main"].Execute(os.Stdout, data)
 }
 
 func AssertMkdir(err error, msg string) {
