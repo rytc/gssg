@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+const DEFAULT_FILE_PERM fs.FileMode = 0775
 
 type PageData struct {
 	SiteName    string
@@ -45,7 +48,7 @@ func CopyDir(src, dest string) error {
 
 	_, err = os.Stat(dest)
 	if os.IsNotExist(err) {
-		err = os.Mkdir(dest, 0755)
+		err = os.Mkdir(dest, DEFAULT_FILE_PERM)
 		if err != nil {
 			return err
 		}
@@ -68,7 +71,7 @@ func CopyDir(src, dest string) error {
 				return err
 			}
 
-			err = ioutil.WriteFile(dest+"/"+f.Name(), content, 0755)
+			err = ioutil.WriteFile(dest+"/"+f.Name(), content, DEFAULT_FILE_PERM)
 			if err != nil {
 				return err
 			}
@@ -146,10 +149,7 @@ func BuildSite() {
 	templates := ReadTemplates()
 	projects := ReadProjects()
 
-	for _, proj := range projects {
-		fmt.Println("Reading project " + proj.Title)
-	}
-
+	// TODO don't hardcode these
 	data := PageData{
 		SiteName:    "rytc.io",
 		PageTitle:   "test page title",
@@ -158,21 +158,37 @@ func BuildSite() {
 
 	data.SiteContent["projects"] = projects
 
-	tplFile, err := ioutil.ReadFile("pages/index.html")
+	pageDir, err := os.ReadDir("pages")
 	if err != nil {
-		log.Fatal("Failed to load page index.html: " + err.Error())
-	}
-	tpl, err := template.New("index.html").Funcs(template.FuncMap{"noescape": Unescape}).Parse(string(tplFile))
-	if err != nil {
-		log.Println("Error parsing template")
 		log.Fatal(err.Error())
 	}
 
-	sw := new(strings.Builder)
-	tpl.Execute(sw, data)
+	for _, page := range pageDir {
+		if page.IsDir() {
+			// TODO handle making subdirectories
+			// Will probably need to be recursive?
+			continue
+		}
+		tplFile, err := ioutil.ReadFile("pages/" + page.Name())
+		if err != nil {
+			log.Fatal("Failed to load page index.html: " + err.Error())
+		}
+		tpl, err := template.New("index.html").Funcs(template.FuncMap{"noescape": Unescape}).Parse(string(tplFile))
+		if err != nil {
+			log.Println("Error parsing template")
+			log.Fatal(err.Error())
+		}
 
-	data.Content = template.HTML(sw.String())
-	templates["main"].Execute(os.Stdout, data)
+		sw := new(strings.Builder)
+		tpl.Execute(sw, data)
+		data.Content = template.HTML(sw.String())
+
+		sw.Reset()
+		templates["main"].Execute(sw, data)
+		ioutil.WriteFile("public/"+page.Name(), []byte(sw.String()), DEFAULT_FILE_PERM)
+
+		log.Println("Writing page " + page.Name())
+	}
 }
 
 func AssertMkdir(err error, msg string) {
@@ -183,11 +199,11 @@ func AssertMkdir(err error, msg string) {
 }
 
 func InitNewSite() {
-	AssertMkdir(os.Mkdir("static", 0755), "Error creating directory ./static")
-	AssertMkdir(os.Mkdir("public", 0755), "Error creating directory ./public")
-	AssertMkdir(os.Mkdir("templates", 0755), "Error creating directory ./templates")
-	AssertMkdir(os.Mkdir("content", 0755), "Error creating directory ./templates")
-	AssertMkdir(os.Mkdir("pages", 0755), "Error creating directory ./templates")
+	AssertMkdir(os.Mkdir("static", DEFAULT_FILE_PERM), "Error creating directory ./static")
+	AssertMkdir(os.Mkdir("public", DEFAULT_FILE_PERM), "Error creating directory ./public")
+	AssertMkdir(os.Mkdir("templates", DEFAULT_FILE_PERM), "Error creating directory ./templates")
+	AssertMkdir(os.Mkdir("content", DEFAULT_FILE_PERM), "Error creating directory ./templates")
+	AssertMkdir(os.Mkdir("pages", DEFAULT_FILE_PERM), "Error creating directory ./templates")
 
 }
 
