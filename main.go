@@ -90,6 +90,7 @@ func ReadTemplates() map[string]*template.Template {
 	templates := make(map[string]*template.Template)
 
 	for _, tpl := range tplDir {
+
 		tplFile, err := ioutil.ReadFile("templates/" + tpl.Name())
 		if err != nil {
 			log.Fatal("Failed to load template " + tpl.Name() + ": " + err.Error())
@@ -109,27 +110,43 @@ func ReadTemplates() map[string]*template.Template {
 	return templates
 }
 
-func ReadProjects() []Project {
+func ReadProjects(dir string) []Project {
 
-	files, err := ioutil.ReadDir("content/projects/featured")
+	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	featuredProj := make([]Project, len(files))
 
-	for i, f := range files {
-		projFile, err := ioutil.ReadFile("content/projects/featured/" + f.Name())
-		if err != nil {
-			log.Fatal("Failed to read projectfile")
-		}
-		projData := Project{}
-		err = json.Unmarshal(projFile, &projData)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
+	for i, file := range files {
 
-		featuredProj[i] = projData
+		if file.IsDir() {
+			continue
+		} else {
+
+			// TODO probably should check for trailing slash?
+			projFile, err := ioutil.ReadFile(dir + file.Name())
+			if err != nil {
+				log.Println("Failed to read project file")
+				log.Fatal(err.Error())
+			}
+
+			fileNameSplit := strings.Split(file.Name(), ".")
+
+			if fileNameSplit[len(fileNameSplit)-1] != "json" {
+				log.Println("Skipping project file " + file.Name() + " due to unknown file extension")
+				continue
+			}
+
+			projData := Project{}
+			err = json.Unmarshal(projFile, &projData)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+
+			featuredProj[i] = projData
+		}
 	}
 
 	return featuredProj
@@ -147,7 +164,10 @@ func BuildSite() {
 	}
 
 	templates := ReadTemplates()
-	projects := ReadProjects()
+
+	featuredProjects := ReadProjects("content/projects/featured/")
+	miniProjects := ReadProjects("content/projects/mini/")
+	retiredProjects := ReadProjects("content/projects/retired/")
 
 	// TODO don't hardcode these
 	data := PageData{
@@ -156,7 +176,11 @@ func BuildSite() {
 		SiteContent: make(map[string]interface{}),
 	}
 
-	data.SiteContent["projects"] = projects
+	projectMap := make(map[string]interface{})
+	projectMap["featuredProjects"] = featuredProjects
+	projectMap["miniProjects"] = miniProjects
+	projectMap["retiredProjects"] = retiredProjects
+	data.SiteContent["projects"] = projectMap
 
 	pageDir, err := os.ReadDir("pages")
 	if err != nil {
