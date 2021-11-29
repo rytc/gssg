@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -10,6 +12,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/gomarkdown/markdown"
 )
 
 const DEFAULT_FILE_PERM fs.FileMode = 0775
@@ -28,6 +33,13 @@ type Project struct {
 	Image       string
 	URLs        []string
 	Description string
+}
+
+type BlogPost struct {
+	Title   string
+	Date    time.Time
+	Draft   bool
+	Content string
 }
 
 func CopyDir(src, dest string) error {
@@ -79,6 +91,91 @@ func CopyDir(src, dest string) error {
 	}
 
 	return err
+}
+
+func ParseBlogPost(fileName string, postContent []byte) BlogPost {
+	result := BlogPost{}
+	bytesReader := bytes.NewReader(postContent)
+	buffReader := bufio.NewReader(bytesReader)
+
+	var val []byte
+	var readLength int
+
+	val, _, err := buffReader.ReadLine()
+
+	if err != nil {
+		return result
+	}
+
+	if string(val) != "---" {
+		log.Println("Missing meta data start delimeter in " + fileName)
+	} else {
+		val, _, err = buffReader.ReadLine()
+		for string(val) != "---" {
+			readLength += len(string(val))
+			split := strings.Split(string(val), ":")
+
+			if split[0] == "title" {
+				result.Title = string(val[1:])
+			} else if split[0] == "date" {
+				result.Date, err = time.Parse("MM-DD-YYYY", string(val[1:]))
+			} else if split[0] == "draft" {
+				if string(split[1:][0]) == "true" {
+					result.Draft = true
+				}
+			}
+
+			val, _, err = buffReader.ReadLine()
+
+			if err != nil {
+				break
+			}
+		}
+	}
+
+	result.Content = string(markdown.ToHTML(postContent[readLength:], nil, nil))
+
+	return result
+}
+
+func ReadBlogPosts(dir string) []BlogPost {
+	postsDir, err := os.ReadDir(dir)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	posts := []BlogPost{}
+
+	for _, postEntry := range postsDir {
+		if postEntry.IsDir() {
+			newPosts := ReadBlogPosts(dir + "/" + postEntry.Name())
+			posts = append(posts, newPosts...)
+		} else {
+			log.Println("Parsing blog post " + postEntry.Name())
+
+			fileNameSplit := strings.Split(postEntry.Name(), ".")
+
+			if fileNameSplit[len(fileNameSplit)-1] != "md" {
+				log.Println("Skipping blog post file " + postEntry.Name() + " due to unknown file extension")
+				continue
+			}
+
+			postFile, err := ioutil.ReadFile(dir + "/" + postEntry.Name())
+			if err != nil {
+				log.Println("Error reading blog post " + postEntry.Name())
+				log.Fatal(err.Error())
+			}
+
+			newPost := ParseBlogPost(dir+postEntry.Name(), postFile)
+
+			fmt.Println(newPost.Content)
+
+			posts = append(posts, newPost)
+
+		}
+	}
+
+	return posts
 }
 
 func ReadTemplates() map[string]*template.Template {
@@ -169,6 +266,8 @@ func BuildSite() {
 	miniProjects := ReadProjects("content/projects/mini/")
 	retiredProjects := ReadProjects("content/projects/retired/")
 
+	blogPosts := ReadBlogPosts("content/blog/")
+
 	// TODO don't hardcode these
 	data := PageData{
 		SiteName:    "rytc.io",
@@ -181,6 +280,8 @@ func BuildSite() {
 	projectMap["miniProjects"] = miniProjects
 	projectMap["retiredProjects"] = retiredProjects
 	data.SiteContent["projects"] = projectMap
+
+	data.SiteContent["blog"] = blogPosts
 
 	pageDir, err := os.ReadDir("pages")
 	if err != nil {
