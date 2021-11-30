@@ -372,13 +372,14 @@ func PrintHelp() {
 
 func main() {
 
-	for _, arg := range os.Args[1:] {
-		if arg == "help" {
-			PrintHelp()
-		} else if arg == "init" {
-			InitNewSite()
-		} else {
-			BuildSite()
-		}
+	arg := os.Args[1]
+
+	if arg == "help" {
+		PrintHelp()
+	} else if arg == "init" {
+		InitNewSite()
+	} else {
+		BuildSite()
 	}
+
 }
