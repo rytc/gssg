@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -274,6 +275,13 @@ func Unescape(s string) template.HTML {
 	return template.HTML(s)
 }
 
+func GetDomain(s string) template.HTML {
+	url, _ := url.Parse(s)
+	urlParts := strings.Split(url.Host, ".")
+
+	return template.HTML(urlParts[len(urlParts)-2])
+}
+
 func BuildSite() {
 	err := CopyDir("static", "public")
 	if err != nil {
@@ -321,7 +329,9 @@ func BuildSite() {
 		if err != nil {
 			log.Fatal("Failed to load page index.html: " + err.Error())
 		}
-		tpl, err := template.New("index.html").Funcs(template.FuncMap{"noescape": Unescape}).Parse(string(tplFile))
+		tpl, err := template.New("index.html").Funcs(template.FuncMap{
+			"noescape":  Unescape,
+			"getdomain": GetDomain}).Parse(string(tplFile))
 		if err != nil {
 			log.Println("Error parsing template")
 			log.Fatal(err.Error())
