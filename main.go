@@ -360,9 +360,13 @@ func InitNewSite() {
 	AssertMkdir(os.Mkdir("static", DEFAULT_FILE_PERM), "Error creating directory ./static")
 	AssertMkdir(os.Mkdir("public", DEFAULT_FILE_PERM), "Error creating directory ./public")
 	AssertMkdir(os.Mkdir("templates", DEFAULT_FILE_PERM), "Error creating directory ./templates")
-	AssertMkdir(os.Mkdir("content", DEFAULT_FILE_PERM), "Error creating directory ./templates")
-	AssertMkdir(os.Mkdir("pages", DEFAULT_FILE_PERM), "Error creating directory ./templates")
-
+	AssertMkdir(os.Mkdir("content", DEFAULT_FILE_PERM), "Error creating directory ./content")
+	AssertMkdir(os.Mkdir("content/blog", DEFAULT_FILE_PERM), "Error creating directory ./content/blogs")
+	AssertMkdir(os.Mkdir("content/projects", DEFAULT_FILE_PERM), "Error creating directory ./content/projects")
+	AssertMkdir(os.Mkdir("content/projects/featured", DEFAULT_FILE_PERM), "Error creating directory ./content/projects/featured")
+	AssertMkdir(os.Mkdir("content/projects/mini", DEFAULT_FILE_PERM), "Error creating directory ./content/projects/mini")
+	AssertMkdir(os.Mkdir("content/projects/retired", DEFAULT_FILE_PERM), "Error creating directory ./content/projects/retired")
+	AssertMkdir(os.Mkdir("pages", DEFAULT_FILE_PERM), "Error creating directory ./pages")
 }
 
 func PrintHelp() {
