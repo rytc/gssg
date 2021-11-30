@@ -47,7 +47,7 @@ type BlogPostList []BlogPost
 
 func (a BlogPostList) Len() int { return len(a) }
 func (a BlogPostList) Less(i, j int) bool {
-	return a[i].Date.Before(a[j].Date)
+	return a[j].Date.Before(a[i].Date)
 }
 func (a BlogPostList) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
@@ -115,6 +115,7 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 	val, _, err := buffReader.ReadLine()
 
 	if err != nil {
+		log.Println("Failed to read file " + fileName)
 		return result
 	}
 
@@ -122,6 +123,9 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 		log.Println("Missing meta data start delimeter in " + fileName)
 	} else {
 		val, _, err = buffReader.ReadLine()
+		if err != nil {
+			return result
+		}
 		for string(val) != "---" {
 			readLength += len(string(val))
 			split := strings.Split(string(val), ":")
