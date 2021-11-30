@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -40,6 +41,16 @@ type BlogPost struct {
 	Date    time.Time
 	Draft   bool
 	Content string
+}
+
+type BlogPostList []BlogPost
+
+func (a BlogPostList) Len() int { return len(a) }
+func (a BlogPostList) Less(i, j int) bool {
+	return a[i].Date.Before(a[j].Date)
+}
+func (a BlogPostList) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
 }
 
 func CopyDir(src, dest string) error {
@@ -116,9 +127,15 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 			split := strings.Split(string(val), ":")
 
 			if split[0] == "title" {
-				result.Title = string(val[1:])
+				// Need a join here just in case there are multiple : in the line
+				result.Title = strings.Join(split[1:], ":")
+				log.Println("Found title: " + result.Title)
 			} else if split[0] == "date" {
-				result.Date, err = time.Parse("MM-DD-YYYY", string(val[1:]))
+				result.Date, err = time.Parse("2006-01-02", strings.TrimSpace(split[1]))
+				if err != nil {
+					log.Println("Error parsing date " + split[1])
+					log.Println(err.Error())
+				}
 			} else if split[0] == "draft" {
 				if string(split[1:][0]) == "true" {
 					result.Draft = true
@@ -138,7 +155,7 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 	return result
 }
 
-func ReadBlogPosts(dir string) []BlogPost {
+func ReadBlogPosts(dir string) BlogPostList {
 	postsDir, err := os.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -168,7 +185,7 @@ func ReadBlogPosts(dir string) []BlogPost {
 
 			newPost := ParseBlogPost(dir+postEntry.Name(), postFile)
 
-			fmt.Println(newPost.Content)
+			//fmt.Println(newPost.Content)
 
 			posts = append(posts, newPost)
 
@@ -267,6 +284,8 @@ func BuildSite() {
 	retiredProjects := ReadProjects("content/projects/retired/")
 
 	blogPosts := ReadBlogPosts("content/blog/")
+
+	sort.Sort(BlogPostList(blogPosts))
 
 	// TODO don't hardcode these
 	data := PageData{
