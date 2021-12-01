@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -16,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-yaml/yaml"
 	"github.com/gomarkdown/markdown"
 )
 
@@ -253,13 +253,13 @@ func ReadProjects(dir string) []Project {
 
 			fileNameSplit := strings.Split(file.Name(), ".")
 
-			if fileNameSplit[len(fileNameSplit)-1] != "json" {
+			if fileNameSplit[len(fileNameSplit)-1] != "yaml" {
 				log.Println("Skipping project file " + file.Name() + " due to unknown file extension")
 				continue
 			}
 
 			projData := Project{}
-			err = json.Unmarshal(projFile, &projData)
+			err = yaml.Unmarshal(projFile, &projData)
 			if err != nil {
 				log.Fatal(err.Error())
 			}
