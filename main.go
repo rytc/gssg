@@ -393,12 +393,20 @@ func RunServer() {
 
 func PrintHelp() {
 	fmt.Println("gssg - Static site generator")
-	fmt.Println("Help will go here eventually")
+	fmt.Println("github.com/rytc/gssg")
+	fmt.Println("  gssg init     Create the initial file structure")
+	fmt.Println("  gssg build    Parse all files, generate the static site into ./public")
+	fmt.Println("  gssg server   Start a local server at localhost:1313")
+
 }
 
 func main() {
 
-	arg := os.Args[1]
+	arg := ""
+
+	if len(os.Args) > 1 {
+		arg = os.Args[1]
+	}
 
 	if arg == "help" {
 		PrintHelp()
