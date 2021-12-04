@@ -34,6 +34,7 @@ type Project struct {
 	Subtitle    string
 	Tags        []string
 	Image       string
+	ImageURL    string
 	URLs        []string
 	Description string
 }
@@ -293,6 +294,11 @@ func BuildSite() {
 	templates := ReadTemplates()
 
 	featuredProjects := ReadProjects("content/projects/featured/")
+
+	for _, proj := range featuredProjects {
+		log.Println("imageURL: " + proj.ImageURL)
+	}
+
 	miniProjects := ReadProjects("content/projects/mini/")
 	retiredProjects := ReadProjects("content/projects/retired/")
 
