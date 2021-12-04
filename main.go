@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -369,6 +370,17 @@ func InitNewSite() {
 	AssertMkdir(os.Mkdir("pages", DEFAULT_FILE_PERM), "Error creating directory ./pages")
 }
 
+func RunServer() {
+	fs := http.FileServer(http.Dir("./public/"))
+	http.Handle("/", http.StripPrefix("/", fs))
+
+	log.Println("Listening on :1313..")
+	err := http.ListenAndServe(":1313", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func PrintHelp() {
 	fmt.Println("gssg - Static site generator")
 	fmt.Println("Help will go here eventually")
@@ -382,8 +394,12 @@ func main() {
 		PrintHelp()
 	} else if arg == "init" {
 		InitNewSite()
-	} else {
+	} else if arg == "build" {
 		BuildSite()
+	} else if arg == "server" {
+		RunServer()
+	} else {
+		PrintHelp()
 	}
 
 }
