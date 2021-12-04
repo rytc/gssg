@@ -1,6 +1,4 @@
 # gssg
----
-
 gssg is my custom static site generator written as a replacement of Hugo for my portfolio site.
 
 [See portfolio site source here](https://github.com/rytc/rytcio)
@@ -8,7 +6,6 @@ gssg is my custom static site generator written as a replacement of Hugo for my 
 Currently a WIP
 
 ## How it works
----
 Run `gssg init` to setup the initial directory structure in an empty directory.
 
 The directory structure is setup as following:
@@ -26,6 +23,5 @@ Running `gssg build` parses the templates, pages, and content then generates a s
 `gssg server` runs a local server to test the site.
 
 ## TODOs
----
 - Add directory watching while the local server is running so that the user doesn't have to close the server process, run `gssg build` then run `gssg server` again
 - Blog post support
