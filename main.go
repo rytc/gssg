@@ -284,6 +284,14 @@ func GetDomain(s string) template.HTML {
 	return template.HTML(urlParts[len(urlParts)-2])
 }
 
+func GetTLD(s string) template.HTML {
+	url, _ := url.Parse(s)
+	urlParts := strings.Split(url.Host, ".")
+
+	return template.HTML(urlParts[len(urlParts)-1])
+
+}
+
 func BuildSite() {
 	err := CopyDir("static", "public")
 	if err != nil {
@@ -338,7 +346,8 @@ func BuildSite() {
 		}
 		tpl, err := template.New("index.html").Funcs(template.FuncMap{
 			"noescape":  Unescape,
-			"getdomain": GetDomain}).Parse(string(tplFile))
+			"getdomain": GetDomain,
+			"gettld":    GetTLD}).Parse(string(tplFile))
 		if err != nil {
 			log.Println("Error parsing template")
 			log.Fatal(err.Error())
