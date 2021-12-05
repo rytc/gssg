@@ -289,7 +289,22 @@ func GetTLD(s string) template.HTML {
 	urlParts := strings.Split(url.Host, ".")
 
 	return template.HTML(urlParts[len(urlParts)-1])
+}
 
+// A URL tag is a way for me to encode some metadata in a project link
+// so that I can have a special icon and text depending on what the link is for
+// for example:
+//    youtube:https://youtube.com/...
+//    demo:https://github.io/...
+//    download:https://github.com/...
+func GetURLTag(s string) template.HTML {
+	urlParts := strings.Split(s, ":")
+	return template.HTML(urlParts[0])
+}
+
+func RemoveURLTag(s string) template.HTML {
+	urlParts := strings.Split(s, ":")
+	return template.HTML(strings.Join(urlParts[1:], ":"))
 }
 
 func BuildSite() {
@@ -340,9 +355,11 @@ func BuildSite() {
 			log.Fatal("Failed to load page index.html: " + err.Error())
 		}
 		tpl, err := template.New("index.html").Funcs(template.FuncMap{
-			"noescape":  Unescape,
-			"getdomain": GetDomain,
-			"gettld":    GetTLD}).Parse(string(tplFile))
+			"noescape":     Unescape,
+			"getdomain":    GetDomain,
+			"gettld":       GetTLD,
+			"geturltag":    GetURLTag,
+			"removeurltag": RemoveURLTag}).Parse(string(tplFile))
 		if err != nil {
 			log.Println("Error parsing template")
 			log.Fatal(err.Error())
