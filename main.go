@@ -32,6 +32,7 @@ type PageData struct {
 type Project struct {
 	Title       string
 	Subtitle    string
+	Date        time.Time
 	Tags        []string
 	Image       string
 	ImageURL    string
@@ -53,6 +54,16 @@ func (a BlogPostList) Less(i, j int) bool {
 	return a[j].Date.Before(a[i].Date)
 }
 func (a BlogPostList) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+type ProjectList []Project
+
+func (a ProjectList) Len() int { return len(a) }
+func (a ProjectList) Less(i, j int) bool {
+	return a[j].Date.Before(a[i].Date)
+}
+func (a ProjectList) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
 
@@ -238,7 +249,7 @@ func ReadProjects(dir string) []Project {
 		log.Fatal(err.Error())
 	}
 
-	featuredProj := make([]Project, len(files))
+	projectList := make([]Project, len(files))
 
 	for i, file := range files {
 
@@ -262,15 +273,18 @@ func ReadProjects(dir string) []Project {
 
 			projData := Project{}
 			err = yaml.Unmarshal(projFile, &projData)
+
 			if err != nil {
 				log.Fatal(err.Error())
 			}
 
-			featuredProj[i] = projData
+			projectList[i] = projData
 		}
 	}
 
-	return featuredProj
+	sort.Sort(ProjectList(projectList))
+
+	return projectList
 }
 
 func Unescape(s string) template.HTML {
