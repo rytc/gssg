@@ -22,9 +22,12 @@ import (
 
 const DEFAULT_FILE_PERM fs.FileMode = 0775
 
+type SiteConfig struct {
+	SiteName string
+}
+
 type PageData struct {
 	SiteName    string
-	PageTitle   string
 	SiteContent map[string]interface{}
 	Content     template.HTML
 }
@@ -339,7 +342,7 @@ func RemoveURLTag(s string) template.HTML {
 	return template.HTML(strings.Join(urlParts[1:], ":"))
 }
 
-func BuildSite() {
+func BuildSite(config SiteConfig) {
 
 	log.Println("Copying static files...")
 	err := CopyDir("static", "public")
@@ -359,10 +362,8 @@ func BuildSite() {
 	blogPosts := ReadBlogPosts("content/blog/")
 	sort.Sort(BlogPostList(blogPosts))
 
-	// TODO don't hardcode these
 	data := PageData{
-		SiteName:    "rytc.io",
-		PageTitle:   "test page title",
+		SiteName:    config.SiteName,
 		SiteContent: make(map[string]interface{}),
 	}
 
@@ -465,7 +466,21 @@ func main() {
 	} else if arg == "init" {
 		InitNewSite()
 	} else if arg == "build" {
-		BuildSite()
+		configFile, err := ioutil.ReadFile("config.yaml")
+
+		if err != nil {
+			log.Fatal("Failed to open config.yaml for this site")
+		}
+
+		config := SiteConfig{}
+
+		err = yaml.Unmarshal(configFile, &config)
+
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		BuildSite(config)
 	} else if arg == "server" {
 		RunServer()
 	} else {
