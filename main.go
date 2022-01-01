@@ -97,17 +97,35 @@ func CopyDir(src, dest string) error {
 	}
 
 	for _, f := range files {
+
 		if f.IsDir() {
 			err = CopyDir(src+"/"+f.Name(), dest+"/"+f.Name())
 			if err != nil {
 				return err
 			}
 		} else {
+
+			destFileName := dest + "/" + f.Name()
+			srcFileName := src + "/" + f.Name()
+
+			destFileInfo, err := os.Stat(destFileName)
+
+			if err == nil {
+				// Only copy the file if the source file was updated after the destination file
+				if f.ModTime().Before(destFileInfo.ModTime()) {
+					log.Println("Skipping " + srcFileName)
+					continue
+				}
+			} else {
+				log.Println(err.Error())
+			}
+
 			content, err := ioutil.ReadFile(src + "/" + f.Name())
 			if err != nil {
 				return err
 			}
 
+			log.Println("Copying " + srcFileName + " to " + destFileName)
 			err = ioutil.WriteFile(dest+"/"+f.Name(), content, DEFAULT_FILE_PERM)
 			if err != nil {
 				return err
@@ -322,20 +340,23 @@ func RemoveURLTag(s string) template.HTML {
 }
 
 func BuildSite() {
+
+	log.Println("Copying static files...")
 	err := CopyDir("static", "public")
 	if err != nil {
 		log.Println("Error building site...")
 		log.Fatal(err.Error())
 	}
 
+	log.Println("Reading templates...")
 	templates := ReadTemplates()
 
+	log.Println("Parsing projects...")
 	featuredProjects := ReadProjects("content/projects/featured/")
 	miniProjects := ReadProjects("content/projects/mini/")
 	retiredProjects := ReadProjects("content/projects/retired/")
 
 	blogPosts := ReadBlogPosts("content/blog/")
-
 	sort.Sort(BlogPostList(blogPosts))
 
 	// TODO don't hardcode these
