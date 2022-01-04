@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-yaml/yaml"
 	"github.com/gomarkdown/markdown"
 )
@@ -25,6 +26,8 @@ const DEFAULT_FILE_PERM fs.FileMode = 0775
 type SiteConfig struct {
 	SiteName string
 }
+
+var config SiteConfig
 
 type PageData struct {
 	SiteName    string
@@ -116,7 +119,7 @@ func CopyDir(src, dest string) error {
 			if err == nil {
 				// Only copy the file if the source file was updated after the destination file
 				if f.ModTime().Before(destFileInfo.ModTime()) {
-					log.Println("Skipping " + srcFileName)
+					//log.Println("Skipping " + srcFileName)
 					continue
 				}
 			} else {
@@ -433,7 +436,50 @@ func InitNewSite() {
 	AssertMkdir(os.Mkdir("pages", DEFAULT_FILE_PERM), "Error creating directory ./pages")
 }
 
+func AddDirToWatcher(watcher *fsnotify.Watcher, rootPath string) {
+
+	if err := filepath.Walk(rootPath, func(path string, fi os.FileInfo, err error) error {
+		if fi.IsDir() {
+			return watcher.Add(path)
+		}
+		return nil
+
+	}); err != nil {
+		log.Println("Failed to walk path " + rootPath)
+		log.Fatal(err.Error())
+	}
+
+}
+
 func RunServer() {
+
+	watcher, _ := fsnotify.NewWatcher()
+
+	AddDirToWatcher(watcher, "./static")
+	AddDirToWatcher(watcher, "./templates")
+	AddDirToWatcher(watcher, "./content")
+
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					log.Println("Modified file " + event.Name + ", rebuilding")
+					BuildSite(config)
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println("Watch error: " + err.Error())
+			}
+		}
+	}()
+
 	fs := http.FileServer(http.Dir("./public/"))
 	http.Handle("/", http.StripPrefix("/", fs))
 
@@ -441,7 +487,10 @@ func RunServer() {
 	err := http.ListenAndServe(":1313", nil)
 	if err != nil {
 		log.Fatal(err)
+
 	}
+
+	<-done
 }
 
 func PrintHelp() {
@@ -459,6 +508,21 @@ func main() {
 
 	if len(os.Args) > 1 {
 		arg = os.Args[1]
+	} else {
+		PrintHelp()
+		return
+	}
+
+	configFile, err := ioutil.ReadFile("config.yaml")
+
+	if err != nil {
+		log.Fatal("Failed to open config.yaml for this site")
+	}
+
+	err = yaml.Unmarshal(configFile, &config)
+
+	if err != nil {
+		log.Fatal(err.Error())
 	}
 
 	if arg == "help" {
@@ -466,20 +530,6 @@ func main() {
 	} else if arg == "init" {
 		InitNewSite()
 	} else if arg == "build" {
-		configFile, err := ioutil.ReadFile("config.yaml")
-
-		if err != nil {
-			log.Fatal("Failed to open config.yaml for this site")
-		}
-
-		config := SiteConfig{}
-
-		err = yaml.Unmarshal(configFile, &config)
-
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-
 		BuildSite(config)
 	} else if arg == "server" {
 		RunServer()
