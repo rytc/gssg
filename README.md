@@ -22,4 +22,4 @@ Running `gssg build` parses the templates, pages, and content then generates a s
 
 ## TODOs
 - Blog post support
-- If a file exists in the "public/" directory that no longer exists in the "static" directory, the delete it
+- If a file exists in the "public/" directory that no longer exists in the "static" directory, delete it
