@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gssg/gssg"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -165,49 +166,34 @@ func ReadBlogPosts(dir string) BlogPostList {
 	return posts
 }
 
-func ReadProjects(dir string) []Project {
+func UnmarshalAllProjcts(file []byte, out *[]Project) error {
+	reader := bytes.NewReader(file)
+	decoder := yaml.NewDecoder(reader)
 
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	projectList := make([]Project, len(files))
-
-	for i, file := range files {
-
-		if file.IsDir() {
-			continue
-		} else {
-
-			// TODO probably should check for trailing slash?
-			projFile, err := ioutil.ReadFile(dir + file.Name())
-			if err != nil {
-				log.Println("Failed to read project file")
-				log.Fatal(err.Error())
+	for {
+		var newProject Project
+		if err := decoder.Decode(&newProject); err != nil {
+			if err != io.EOF {
+				return err
 			}
-
-			fileNameSplit := strings.Split(file.Name(), ".")
-
-			if fileNameSplit[len(fileNameSplit)-1] != "yaml" {
-				log.Println("Skipping project file " + file.Name() + " due to unknown file extension")
-				continue
-			}
-
-			projData := Project{}
-			err = yaml.Unmarshal(projFile, &projData)
-
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-
-			projectList[i] = projData
+			break
 		}
+		*out = append(*out, newProject)
 	}
 
-	sort.Sort(ProjectList(projectList))
+	return nil
+}
 
-	return projectList
+func ReadProjects(projectFilename string, out *[]Project) error {
+
+	projectFile, err := ioutil.ReadFile(projectFilename)
+	if err != nil {
+		return err
+	}
+
+	err = UnmarshalAllProjcts(projectFile, out)
+
+	return err
 }
 
 func BuildSite(config SiteConfig) {
@@ -223,9 +209,25 @@ func BuildSite(config SiteConfig) {
 	templates := gssg.LoadTemplatesFromDir("templates")
 
 	log.Println("Parsing projects...")
-	featuredProjects := ReadProjects("content/projects/featured/")
-	miniProjects := ReadProjects("content/projects/mini/")
-	retiredProjects := ReadProjects("content/projects/retired/")
+
+	var featuredProjects []Project
+	var miniProjects []Project
+	var retiredProjects []Project
+
+	err = ReadProjects("content/projects/featured.yaml", &featuredProjects)
+	if err != nil {
+		log.Fatal("Failed to read featured projects file")
+	}
+
+	err = ReadProjects("content/projects/mini.yaml", &miniProjects)
+	if err != nil {
+		log.Fatal("Failed to read mini projects file")
+	}
+
+	err = ReadProjects("content/projects/retired.yaml", &retiredProjects)
+	if err != nil {
+		log.Fatal("Failed to read retired projects file")
+	}
 
 	blogPosts := ReadBlogPosts("content/blog/")
 	sort.Sort(BlogPostList(blogPosts))
