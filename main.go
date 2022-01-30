@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"gssg/gssg"
 	"html/template"
-	"io/fs"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -20,8 +20,6 @@ import (
 	"github.com/go-yaml/yaml"
 	"github.com/gomarkdown/markdown"
 )
-
-const DEFAULT_FILE_PERM fs.FileMode = 0775
 
 type SiteConfig struct {
 	SiteName string
@@ -71,75 +69,6 @@ func (a ProjectList) Less(i, j int) bool {
 }
 func (a ProjectList) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
-}
-
-func CopyDir(src, dest string) error {
-
-	f, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-
-	file, err := f.Stat()
-	if err != nil {
-		return err
-	}
-
-	if !file.IsDir() {
-		return fmt.Errorf("CopyDir: source " + file.Name() + " is not a directory!")
-	}
-
-	_, err = os.Stat(dest)
-	if os.IsNotExist(err) {
-		err = os.Mkdir(dest, DEFAULT_FILE_PERM)
-		if err != nil {
-			return err
-		}
-	}
-
-	files, err := ioutil.ReadDir(src)
-	if err != nil {
-		return err
-	}
-
-	for _, f := range files {
-
-		if f.IsDir() {
-			err = CopyDir(src+"/"+f.Name(), dest+"/"+f.Name())
-			if err != nil {
-				return err
-			}
-		} else {
-
-			destFileName := dest + "/" + f.Name()
-			srcFileName := src + "/" + f.Name()
-
-			destFileInfo, err := os.Stat(destFileName)
-
-			if err == nil {
-				// Only copy the file if the source file was updated after the destination file
-				if f.ModTime().Before(destFileInfo.ModTime()) {
-					//log.Println("Skipping " + srcFileName)
-					continue
-				}
-			} else {
-				log.Println(err.Error())
-			}
-
-			content, err := ioutil.ReadFile(src + "/" + f.Name())
-			if err != nil {
-				return err
-			}
-
-			log.Println("Copying " + srcFileName + " to " + destFileName)
-			err = ioutil.WriteFile(dest+"/"+f.Name(), content, DEFAULT_FILE_PERM)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return err
 }
 
 func ParseBlogPost(fileName string, postContent []byte) BlogPost {
@@ -237,35 +166,6 @@ func ReadBlogPosts(dir string) BlogPostList {
 	return posts
 }
 
-func ReadTemplates() map[string]*template.Template {
-	tplDir, err := os.ReadDir("templates")
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	templates := make(map[string]*template.Template)
-
-	for _, tpl := range tplDir {
-
-		tplFile, err := ioutil.ReadFile("templates/" + tpl.Name())
-		if err != nil {
-			log.Fatal("Failed to load template " + tpl.Name() + ": " + err.Error())
-		}
-		tplName := strings.TrimSuffix(string(tpl.Name()), filepath.Ext(tpl.Name()))
-
-		log.Print("Parsing template " + tplName)
-		tpl, err := template.New(tplName).Parse(string(tplFile))
-		if err != nil {
-			log.Println("Error parsing template")
-			log.Fatal(err.Error())
-		}
-
-		templates[tplName] = tpl
-	}
-
-	return templates
-}
-
 func ReadProjects(dir string) []Project {
 
 	files, err := ioutil.ReadDir(dir)
@@ -348,14 +248,14 @@ func RemoveURLTag(s string) template.HTML {
 func BuildSite(config SiteConfig) {
 
 	log.Println("Copying static files...")
-	err := CopyDir("static", "public")
+	err := gssg.CopyDir("static", "public")
 	if err != nil {
 		log.Println("Error building site...")
 		log.Fatal(err.Error())
 	}
 
 	log.Println("Reading templates...")
-	templates := ReadTemplates()
+	templates := gssg.LoadTemplatesFromDir("templates")
 
 	log.Println("Parsing projects...")
 	featuredProjects := ReadProjects("content/projects/featured/")
@@ -410,7 +310,7 @@ func BuildSite(config SiteConfig) {
 
 		sw.Reset()
 		templates["main"].Execute(sw, data)
-		ioutil.WriteFile("public/"+page.Name(), []byte(sw.String()), DEFAULT_FILE_PERM)
+		ioutil.WriteFile("public/"+page.Name(), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
 
 		log.Println("Writing page " + page.Name())
 	}
@@ -424,16 +324,16 @@ func AssertMkdir(err error, msg string) {
 }
 
 func InitNewSite() {
-	AssertMkdir(os.Mkdir("static", DEFAULT_FILE_PERM), "Error creating directory ./static")
-	AssertMkdir(os.Mkdir("public", DEFAULT_FILE_PERM), "Error creating directory ./public")
-	AssertMkdir(os.Mkdir("templates", DEFAULT_FILE_PERM), "Error creating directory ./templates")
-	AssertMkdir(os.Mkdir("content", DEFAULT_FILE_PERM), "Error creating directory ./content")
-	AssertMkdir(os.Mkdir("content/blog", DEFAULT_FILE_PERM), "Error creating directory ./content/blogs")
-	AssertMkdir(os.Mkdir("content/projects", DEFAULT_FILE_PERM), "Error creating directory ./content/projects")
-	AssertMkdir(os.Mkdir("content/projects/featured", DEFAULT_FILE_PERM), "Error creating directory ./content/projects/featured")
-	AssertMkdir(os.Mkdir("content/projects/mini", DEFAULT_FILE_PERM), "Error creating directory ./content/projects/mini")
-	AssertMkdir(os.Mkdir("content/projects/retired", DEFAULT_FILE_PERM), "Error creating directory ./content/projects/retired")
-	AssertMkdir(os.Mkdir("pages", DEFAULT_FILE_PERM), "Error creating directory ./pages")
+	AssertMkdir(os.Mkdir("static", gssg.DEFAULT_FILE_PERM), "Error creating directory ./static")
+	AssertMkdir(os.Mkdir("public", gssg.DEFAULT_FILE_PERM), "Error creating directory ./public")
+	AssertMkdir(os.Mkdir("templates", gssg.DEFAULT_FILE_PERM), "Error creating directory ./templates")
+	AssertMkdir(os.Mkdir("content", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content")
+	AssertMkdir(os.Mkdir("content/blog", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/blogs")
+	AssertMkdir(os.Mkdir("content/projects", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects")
+	AssertMkdir(os.Mkdir("content/projects/featured", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects/featured")
+	AssertMkdir(os.Mkdir("content/projects/mini", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects/mini")
+	AssertMkdir(os.Mkdir("content/projects/retired", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects/retired")
+	AssertMkdir(os.Mkdir("pages", gssg.DEFAULT_FILE_PERM), "Error creating directory ./pages")
 }
 
 func AddDirToWatcher(watcher *fsnotify.Watcher, rootPath string) {

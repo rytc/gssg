@@ -1,4 +1,4 @@
-module github.com/rytc/gssg
+module gssg
 
 go 1.17
 
