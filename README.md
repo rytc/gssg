@@ -6,7 +6,7 @@ gssg is my custom static site generator written as a replacement of Hugo for my 
 ## How it works
 Run `gssg init` to setup the initial directory structure in an empty directory.
 
-The directory structure is setup as following:
+The directory structure is setup as follows:
 
 - **./templates:** The site template for site-wide header and footer go
 - **./pages:** HTML pages with templating logic
