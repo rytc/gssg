@@ -322,6 +322,7 @@ func RunServer() {
 
 	watcher, _ := fsnotify.NewWatcher()
 
+	AddDirToWatcher(watcher, "./pages")
 	AddDirToWatcher(watcher, "./static")
 	AddDirToWatcher(watcher, "./templates")
 	AddDirToWatcher(watcher, "./content")
