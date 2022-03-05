@@ -21,5 +21,4 @@ Running `gssg build` parses the templates, pages, and content then generates a s
 `gssg server` runs a local server to test the site.
 
 ## TODOs
-- Blog post support
 - If a file exists in the "public/" directory that no longer exists in the "static" directory, delete it
