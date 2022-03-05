@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+    "path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -149,7 +150,7 @@ func ReadBlogPosts(dir string) BlogPostList {
 
 	for _, postEntry := range postsDir {
 		if postEntry.IsDir() {
-			newPosts := ReadBlogPosts(dir + "/" + postEntry.Name())
+			newPosts := ReadBlogPosts(path.Join(dir, postEntry.Name()))
 			posts = append(posts, newPosts...)
 		} else {
 			log.Println("Parsing blog post " + postEntry.Name())
@@ -269,7 +270,7 @@ func BuildSite(config SiteConfig) {
 			// Will probably need to be recursive?
 			continue
 		}
-		tplFile, err := ioutil.ReadFile("pages/" + page.Name())
+		tplFile, err := ioutil.ReadFile(path.Join("pages", page.Name()))
 		if err != nil {
 			log.Fatal("Failed to load page index.html: " + err.Error())
 		}
@@ -290,7 +291,7 @@ func BuildSite(config SiteConfig) {
 
 		sw.Reset()
 		templates["main"].Execute(sw, data)
-		ioutil.WriteFile("public/"+page.Name(), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
+		ioutil.WriteFile(path.Join("public", page.Name()), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
 
 		log.Println("Writing page " + page.Name())
 	}
@@ -327,7 +328,7 @@ func BuildSite(config SiteConfig) {
 		//ioutil.WriteFile("public/"+page.Name(), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
 
         // []byte(blogPost.Content)
-        ioutil.WriteFile("public/blog/"+blogPost.Permalink, []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
+        ioutil.WriteFile(path.Join("public", "blog", blogPost.Permalink), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
         log.Println("Writing blog " + blogPost.Permalink)
     }
 }
