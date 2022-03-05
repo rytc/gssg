@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-    "path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -78,7 +77,7 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 	bytesReader := bytes.NewReader(postContent)
 	buffReader := bufio.NewReader(bytesReader)
 
-    fileNameSplit := strings.Split(fileName, "/")
+    fileNameSplit := strings.Split(fileName, string(os.PathSeparator))
     fileNameSplit = strings.Split(fileNameSplit[len(fileNameSplit)-1], ".")
     result.Permalink = fileNameSplit[0] + ".html"
 
@@ -108,7 +107,6 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 			if split[0] == "title" {
 				// Need a join here just in case there are multiple : in the line
 				result.Title = strings.Join(split[1:], ":")
-				log.Println("Found title: " + result.Title)
 			} else if split[0] == "date" {
 				result.Date, err = time.Parse("2006-01-02", strings.TrimSpace(split[1]))
 				if err != nil {
@@ -150,7 +148,7 @@ func ReadBlogPosts(dir string) BlogPostList {
 
 	for _, postEntry := range postsDir {
 		if postEntry.IsDir() {
-			newPosts := ReadBlogPosts(path.Join(dir, postEntry.Name()))
+			newPosts := ReadBlogPosts(filepath.Join(dir, postEntry.Name()))
 			posts = append(posts, newPosts...)
 		} else {
 			log.Println("Parsing blog post " + postEntry.Name())
@@ -162,13 +160,13 @@ func ReadBlogPosts(dir string) BlogPostList {
 				continue
 			}
 
-			postFile, err := ioutil.ReadFile(dir + "/" + postEntry.Name())
+			postFile, err := ioutil.ReadFile(filepath.Join(dir, postEntry.Name()))
 			if err != nil {
 				log.Println("Error reading blog post " + postEntry.Name())
 				log.Fatal(err.Error())
 			}
 
-			newPost := ParseBlogPost(dir+postEntry.Name(), postFile)
+			newPost := ParseBlogPost(filepath.Join(dir, postEntry.Name()), postFile)
 
 			posts = append(posts, newPost)
 
@@ -225,23 +223,26 @@ func BuildSite(config SiteConfig) {
 	var featuredProjects []Project
 	var miniProjects []Project
 	var retiredProjects []Project
-
-	err = ReadProjects("content/projects/featured.yaml", &featuredProjects)
+    
+    featuredProjectsPath := filepath.Join("content", "projects", "featured.yaml")
+	err = ReadProjects(featuredProjectsPath, &featuredProjects)
 	if err != nil {
 		log.Println("Failed to read featured projects file. Site will still build")
 	}
 
-	err = ReadProjects("content/projects/mini.yaml", &miniProjects)
+    miniProjectsPath := filepath.Join("content", "projects", "mini.yaml");
+	err = ReadProjects(miniProjectsPath, &miniProjects)
 	if err != nil {
 		log.Println("Failed to read mini projects file. Site will still build")
 	}
 
-	err = ReadProjects("content/projects/retired.yaml", &retiredProjects)
+    retiredProjectsPath := filepath.Join("content", "projects", "retired.yaml")
+	err = ReadProjects(retiredProjectsPath, &retiredProjects)
 	if err != nil {
 		log.Println("Failed to read retired projects file. Site will still build.")
 	}
 
-	blogPosts := ReadBlogPosts("content/blog/")
+	blogPosts := ReadBlogPosts(filepath.Join("content", "blog"))
 	sort.Sort(BlogPostList(blogPosts))
 
 	data := PageData{
@@ -268,7 +269,7 @@ func BuildSite(config SiteConfig) {
 			// Will probably need to be recursive?
 			continue
 		}
-		tplFile, err := ioutil.ReadFile(path.Join("pages", page.Name()))
+		tplFile, err := ioutil.ReadFile(filepath.Join("pages", page.Name()))
 		if err != nil {
 			log.Fatal("Failed to load page index.html: " + err.Error())
 		}
@@ -289,7 +290,7 @@ func BuildSite(config SiteConfig) {
 
 		sw.Reset()
 		templates["main"].Execute(sw, data)
-		ioutil.WriteFile(path.Join("public", page.Name()), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
+		ioutil.WriteFile(filepath.Join("public", page.Name()), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
 
 		log.Println("Writing page " + page.Name())
 	}
@@ -311,7 +312,7 @@ func BuildSite(config SiteConfig) {
 		//ioutil.WriteFile("public/"+page.Name(), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
 
         // []byte(blogPost.Content)
-        ioutil.WriteFile(path.Join("public", "blog", blogPost.Permalink), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
+        ioutil.WriteFile(filepath.Join("public", "blog", blogPost.Permalink), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
         log.Println("Writing blog " + blogPost.Permalink)
     }
 }
@@ -326,11 +327,11 @@ func AssertMkdir(err error, msg string) {
 func InitNewSite() {
 	AssertMkdir(os.Mkdir("static", gssg.DEFAULT_FILE_PERM), "Error creating directory ./static")
 	AssertMkdir(os.Mkdir("public", gssg.DEFAULT_FILE_PERM), "Error creating directory ./public")
-    AssertMkdir(os.Mkdir("public/blog", gssg.DEFAULT_FILE_PERM), "Error creating directory ./public/blog")
+    AssertMkdir(os.Mkdir(filepath.Join("public", "blog"), gssg.DEFAULT_FILE_PERM), "Error creating directory ./public/blog")
 	AssertMkdir(os.Mkdir("templates", gssg.DEFAULT_FILE_PERM), "Error creating directory ./templates")
 	AssertMkdir(os.Mkdir("content", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content")
-	AssertMkdir(os.Mkdir("content/blog", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/blogs")
-	AssertMkdir(os.Mkdir("content/projects", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects")
+	AssertMkdir(os.Mkdir(filepath.Join("content","blog"), gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/blogs")
+	AssertMkdir(os.Mkdir(filepath.Join("content", "projects"), gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects")
 	AssertMkdir(os.Mkdir("pages", gssg.DEFAULT_FILE_PERM), "Error creating directory ./pages")
 
     baseConfigYaml := `---
@@ -351,7 +352,7 @@ func InitNewSite() {
     </body>
     </html>
     `
-    ioutil.WriteFile(path.Join("templates", "main.html"), []byte(baseTemplate), gssg.DEFAULT_FILE_PERM)
+    ioutil.WriteFile(filepath.Join("templates", "main.html"), []byte(baseTemplate), gssg.DEFAULT_FILE_PERM)
 
     baseIndex := `
         <h2>How to use gssg</h2>
@@ -370,7 +371,7 @@ func InitNewSite() {
         </ul>
     `
 
-    ioutil.WriteFile(path.Join("pages", "index.html"), []byte(baseIndex), gssg.DEFAULT_FILE_PERM)
+    ioutil.WriteFile(filepath.Join("pages", "index.html"), []byte(baseIndex), gssg.DEFAULT_FILE_PERM)
 
     log.Println("Site generation is done! Run: `gssg build` then run `gssg server`. Browse to localhost:1313 to see site running live.");
 
@@ -468,8 +469,6 @@ func main() {
 		PrintHelp()
 		return
 	}
-
-    
 
 	if arg == "help" {
 		PrintHelp()

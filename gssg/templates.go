@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -21,7 +20,7 @@ func LoadTemplatesFromDir(dir string) map[string]*template.Template {
 
 	for _, tpl := range tplDir {
 
-		tplFile, err := ioutil.ReadFile(path.Join(dir, tpl.Name()))
+		tplFile, err := ioutil.ReadFile(filepath.Join(dir, tpl.Name()))
 		if err != nil {
 			log.Fatal("Failed to load template " + tpl.Name() + ": " + err.Error())
 		}

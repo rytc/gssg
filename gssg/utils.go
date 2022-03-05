@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+    "path/filepath"
 )
 
 const DEFAULT_FILE_PERM fs.FileMode = 0775
@@ -42,14 +43,14 @@ func CopyDir(src, dest string) error {
 	for _, f := range files {
 
 		if f.IsDir() {
-			err = CopyDir(src+"/"+f.Name(), dest+"/"+f.Name())
+			err = CopyDir(filepath.Join(src, f.Name()), filepath.Join(dest, f.Name()))
 			if err != nil {
 				return err
 			}
 		} else {
 
-			destFileName := dest + "/" + f.Name()
-			srcFileName := src + "/" + f.Name()
+			destFileName := filepath.Join(dest, f.Name())
+			srcFileName := filepath.Join(src, f.Name())
 
 			destFileInfo, err := os.Stat(destFileName)
 
@@ -63,13 +64,13 @@ func CopyDir(src, dest string) error {
 				log.Println(err.Error())
 			}
 
-			content, err := ioutil.ReadFile(src + "/" + f.Name())
+			content, err := ioutil.ReadFile(filepath.Join(src, f.Name()))
 			if err != nil {
 				return err
 			}
 
 			log.Println("Copying " + srcFileName + " to " + destFileName)
-			err = ioutil.WriteFile(dest+"/"+f.Name(), content, DEFAULT_FILE_PERM)
+			err = ioutil.WriteFile(filepath.Join(dest, f.Name()), content, DEFAULT_FILE_PERM)
 			if err != nil {
 				return err
 			}
