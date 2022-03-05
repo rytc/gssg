@@ -170,8 +170,6 @@ func ReadBlogPosts(dir string) BlogPostList {
 
 			newPost := ParseBlogPost(dir+postEntry.Name(), postFile)
 
-			//fmt.Println(newPost.Content)
-
 			posts = append(posts, newPost)
 
 		}
@@ -230,17 +228,17 @@ func BuildSite(config SiteConfig) {
 
 	err = ReadProjects("content/projects/featured.yaml", &featuredProjects)
 	if err != nil {
-		log.Fatal("Failed to read featured projects file")
+		log.Println("Failed to read featured projects file. Site will still build")
 	}
 
 	err = ReadProjects("content/projects/mini.yaml", &miniProjects)
 	if err != nil {
-		log.Fatal("Failed to read mini projects file")
+		log.Println("Failed to read mini projects file. Site will still build")
 	}
 
 	err = ReadProjects("content/projects/retired.yaml", &retiredProjects)
 	if err != nil {
-		log.Fatal("Failed to read retired projects file")
+		log.Println("Failed to read retired projects file. Site will still build.")
 	}
 
 	blogPosts := ReadBlogPosts("content/blog/")
@@ -333,10 +331,50 @@ func InitNewSite() {
 	AssertMkdir(os.Mkdir("content", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content")
 	AssertMkdir(os.Mkdir("content/blog", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/blogs")
 	AssertMkdir(os.Mkdir("content/projects", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects")
-	AssertMkdir(os.Mkdir("content/projects/featured", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects/featured")
-	AssertMkdir(os.Mkdir("content/projects/mini", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects/mini")
-	AssertMkdir(os.Mkdir("content/projects/retired", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/projects/retired")
 	AssertMkdir(os.Mkdir("pages", gssg.DEFAULT_FILE_PERM), "Error creating directory ./pages")
+
+    baseConfigYaml := `---
+    sitename: "My Site"`
+
+    ioutil.WriteFile("config.yaml", []byte(baseConfigYaml), gssg.DEFAULT_FILE_PERM)
+
+    baseTemplate := `
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <title>{{.SiteName}}</title>
+    </head>
+    <body>
+        <h1>Welcome to {{.SiteName}}</h1>
+        <br />
+        {{.Content}}
+    </body>
+    </html>
+    `
+    ioutil.WriteFile(path.Join("templates", "main.html"), []byte(baseTemplate), gssg.DEFAULT_FILE_PERM)
+
+    baseIndex := `
+        <h2>How to use gssg</h2>
+        <ul>
+            <li>Images, css, etc. go into the ./static directory and will automatically copied into public</li>
+            <li>Write blog posts into content/blog/ as Markdown files. Blog posts start with YAML header with the attributes: 
+            title (String), date (Date), draft (Boolean). Example: <pre>
+            ---
+            title: My Blog Post Title
+            date: 2022-01-01
+            draft: false
+            ---
+            </pre></li>
+            <li>Pages are formatted as HTML go into the ./pages directory and will directly be parsed and outputted into ./public with the same filename.</li>
+            <li>Blog posts use a special template named "templates/blogPosts.html"</li>
+        </ul>
+    `
+
+    ioutil.WriteFile(path.Join("pages", "index.html"), []byte(baseIndex), gssg.DEFAULT_FILE_PERM)
+
+    log.Println("Site generation is done! Run: `gssg build` then run `gssg server`. Browse to localhost:1313 to see site running live.");
+
+
 }
 
 func AddDirToWatcher(watcher *fsnotify.Watcher, rootPath string) {
@@ -406,6 +444,20 @@ func PrintHelp() {
 
 }
 
+func LoadConfig() {
+    configFile, err := ioutil.ReadFile("config.yaml")
+
+	if err != nil {
+		log.Fatal("Failed to open config.yaml for this site")
+	}
+
+	err = yaml.Unmarshal(configFile, &config)
+
+    if err != nil {
+		log.Fatal(err.Error())
+	}
+}
+
 func main() {
 
 	arg := ""
@@ -417,25 +469,17 @@ func main() {
 		return
 	}
 
-	configFile, err := ioutil.ReadFile("config.yaml")
-
-	if err != nil {
-		log.Fatal("Failed to open config.yaml for this site")
-	}
-
-	err = yaml.Unmarshal(configFile, &config)
-
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+    
 
 	if arg == "help" {
 		PrintHelp()
 	} else if arg == "init" {
 		InitNewSite()
 	} else if arg == "build" {
-		BuildSite(config)
+		LoadConfig()
+        BuildSite(config)
 	} else if arg == "server" {
+        LoadConfig()
 		RunServer()
 	} else {
 		PrintHelp()
