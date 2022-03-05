@@ -49,6 +49,7 @@ type BlogPost struct {
 	Date    time.Time
 	Draft   bool
 	Content string
+    Permalink string
 }
 
 type BlogPostList []BlogPost
@@ -76,10 +77,15 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 	bytesReader := bytes.NewReader(postContent)
 	buffReader := bufio.NewReader(bytesReader)
 
+    fileNameSplit := strings.Split(fileName, "/")
+    fileNameSplit = strings.Split(fileNameSplit[len(fileNameSplit)-1], ".")
+    result.Permalink = fileNameSplit[0] + ".html"
+
 	var val []byte
 	var readLength int
 
 	val, _, err := buffReader.ReadLine()
+    readLength += len(string(val))
 
 	if err != nil {
 		log.Println("Failed to read file " + fileName)
@@ -90,12 +96,13 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 		log.Println("Missing meta data start delimeter in " + fileName)
 	} else {
 		val, _, err = buffReader.ReadLine()
+        readLength += len(string(val))
+
 		if err != nil {
 			return result
 		}
 		for string(val) != "---" {
-			readLength += len(string(val))
-			split := strings.Split(string(val), ":")
+            split := strings.Split(string(val), ":")
 
 			if split[0] == "title" {
 				// Need a join here just in case there are multiple : in the line
@@ -108,17 +115,23 @@ func ParseBlogPost(fileName string, postContent []byte) BlogPost {
 					log.Println(err.Error())
 				}
 			} else if split[0] == "draft" {
-				if string(split[1:][0]) == "true" {
+				if strings.TrimSpace(string(split[1:][0])) == "true" {
 					result.Draft = true
-				}
+				} else {
+                    result.Draft = false
+                }
 			}
 
 			val, _, err = buffReader.ReadLine()
+            readLength += len(string(val))
 
 			if err != nil {
 				break
 			}
 		}
+
+        readLength += len(string(val)) + 1
+
 	}
 
 	result.Content = string(markdown.ToHTML(postContent[readLength:], nil, nil))
@@ -281,6 +294,42 @@ func BuildSite(config SiteConfig) {
 
 		log.Println("Writing page " + page.Name())
 	}
+
+    // Output blog posts
+    blogPostTplFile, err := ioutil.ReadFile("pages/blogPost.html")
+    if err != nil {
+        log.Fatal("Failed to load page blogPost.html: " + err.Error())
+    }
+
+    for _,blogPost := range blogPosts {
+        if(blogPost.Draft == true) {
+            log.Println("Skipping draft...")
+            continue;
+        }
+
+        tpl, err := template.New("blogPost.html").Funcs(template.FuncMap{
+			"noescape":     gssg.Unescape,
+			"getdomain":    gssg.GetDomain,
+			"gettld":       gssg.GetTLD,
+			"geturltag":    gssg.GetURLTag,
+			"removeurltag": gssg.RemoveURLTag}).Parse(string(blogPostTplFile))
+		if err != nil {
+			log.Println("Error parsing template for blogPost")
+			log.Fatal(err.Error())
+		}
+
+		sw := new(strings.Builder)
+		tpl.Execute(sw, blogPost)
+		data.Content = template.HTML(sw.String())
+
+		sw.Reset()
+		templates["main"].Execute(sw, data)
+		//ioutil.WriteFile("public/"+page.Name(), []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
+
+        // []byte(blogPost.Content)
+        ioutil.WriteFile("public/blog/"+blogPost.Permalink, []byte(sw.String()), gssg.DEFAULT_FILE_PERM)
+        log.Println("Writing blog " + blogPost.Permalink)
+    }
 }
 
 func AssertMkdir(err error, msg string) {
@@ -293,6 +342,7 @@ func AssertMkdir(err error, msg string) {
 func InitNewSite() {
 	AssertMkdir(os.Mkdir("static", gssg.DEFAULT_FILE_PERM), "Error creating directory ./static")
 	AssertMkdir(os.Mkdir("public", gssg.DEFAULT_FILE_PERM), "Error creating directory ./public")
+    AssertMkdir(os.Mkdir("public/blog", gssg.DEFAULT_FILE_PERM), "Error creating directory ./public/blog")
 	AssertMkdir(os.Mkdir("templates", gssg.DEFAULT_FILE_PERM), "Error creating directory ./templates")
 	AssertMkdir(os.Mkdir("content", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content")
 	AssertMkdir(os.Mkdir("content/blog", gssg.DEFAULT_FILE_PERM), "Error creating directory ./content/blogs")
