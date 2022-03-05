@@ -28,7 +28,12 @@ func LoadTemplatesFromDir(dir string) map[string]*template.Template {
 		tplName := strings.TrimSuffix(string(tpl.Name()), filepath.Ext(tpl.Name()))
 
 		log.Print("Parsing template " + tplName)
-		tpl, err := template.New(tplName).Parse(string(tplFile))
+		tpl, err := template.New(tplName).Funcs(template.FuncMap{
+			"noescape":     Unescape,
+			"getdomain":    GetDomain,
+			"gettld":       GetTLD,
+			"geturltag":    GetURLTag,
+			"removeurltag": RemoveURLTag}).Parse(string(tplFile))
 		if err != nil {
 			log.Println("Error parsing template")
 			log.Fatal(err.Error())

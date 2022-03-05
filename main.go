@@ -297,10 +297,6 @@ func BuildSite(config SiteConfig) {
 	}
 
     // Output blog posts
-    blogPostTplFile, err := ioutil.ReadFile("pages/blogPost.html")
-    if err != nil {
-        log.Fatal("Failed to load page blogPost.html: " + err.Error())
-    }
 
     for _,blogPost := range blogPosts {
         if(blogPost.Draft == true) {
@@ -308,19 +304,8 @@ func BuildSite(config SiteConfig) {
             continue;
         }
 
-        tpl, err := template.New("blogPost.html").Funcs(template.FuncMap{
-			"noescape":     gssg.Unescape,
-			"getdomain":    gssg.GetDomain,
-			"gettld":       gssg.GetTLD,
-			"geturltag":    gssg.GetURLTag,
-			"removeurltag": gssg.RemoveURLTag}).Parse(string(blogPostTplFile))
-		if err != nil {
-			log.Println("Error parsing template for blogPost")
-			log.Fatal(err.Error())
-		}
-
 		sw := new(strings.Builder)
-		tpl.Execute(sw, blogPost)
+		templates["blogPost"].Execute(sw, blogPost)
 		data.Content = template.HTML(sw.String())
 
 		sw.Reset()
